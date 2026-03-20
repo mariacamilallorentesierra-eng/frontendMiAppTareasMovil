@@ -17,7 +17,7 @@ export const loginService = async (email, password) => {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Error al iniciar sesión");
+            throw new Error(data.error || "Error al iniciar la sesión");
         }
 
         return data; // Retorna tokens de Firebase/Django
