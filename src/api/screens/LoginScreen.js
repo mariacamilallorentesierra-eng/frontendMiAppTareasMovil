@@ -48,7 +48,7 @@ export const LoginScreen = () => {
             {loading ? (
                 <ActivityIndicator size="large" color="#00ff4c" />
             ) : (
-                <Button title="Iniciar Sesión" onPress={handleLogin} color="#00ff4c" />
+                <Button title="Por favor, iniciar Sesión" onPress={handleLogin} color="#00ff4c" />
             )}
         </View>
     );
