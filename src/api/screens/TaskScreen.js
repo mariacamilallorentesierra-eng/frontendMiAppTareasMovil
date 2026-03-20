@@ -32,7 +32,7 @@ const TaskScreen = () => {
                 setTasks(data);
             }
         } catch (error) { 
-            console.error("Error al cargar tareas:", error); 
+            console.error("Error al subir tareas:", error); 
         } finally { 
             setLoading(false); 
         }
