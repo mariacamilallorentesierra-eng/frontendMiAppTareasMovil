@@ -64,7 +64,7 @@ const TaskScreen = () => {
             cerrarModal();
             Alert.alert("Éxito", "Tarea creada exitosamente");
         } catch (error) {
-            Alert.alert("Error", "No se pudo guardar la tarea en el servidor");
+            Alert.alert("Error", "No se pudo guardar la tarea");
         } finally {
             setCreando(false);
         }
