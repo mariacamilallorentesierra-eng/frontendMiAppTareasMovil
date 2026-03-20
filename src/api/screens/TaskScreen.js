@@ -32,7 +32,7 @@ const TaskScreen = () => {
                 setTasks(data);
             }
         } catch (error) { 
-            console.error("Error al subir tareas:", error); 
+            console.error("Error al obtener tareas:", error); 
         } finally { 
             setLoading(false); 
         }
@@ -62,7 +62,7 @@ const TaskScreen = () => {
 
             setTasks(prev => [nuevaTareaLocal, ...prev]);
             cerrarModal();
-            Alert.alert("Éxito", "Tarea creada correctamente");
+            Alert.alert("Éxito", "Tarea creada exitosamente");
         } catch (error) {
             Alert.alert("Error", "No se pudo guardar la tarea en el servidor");
         } finally {
