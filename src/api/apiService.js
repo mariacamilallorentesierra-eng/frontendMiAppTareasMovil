@@ -113,3 +113,50 @@ export const taskApiService = {
         }
     }
 };
+
+export const userService = {
+
+    getProfile: async (token) => {
+        const res = await fetch(`${BASE_URL}/perfil/`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || "Error al obtener perfil");
+        }
+
+        return data;
+    },
+
+    uploadProfileImage: async (token, imageUri) => {
+        const formData = new FormData();
+
+        formData.append("imagen", {
+            uri: imageUri,
+            name: "profile.jpg",
+            type: "image/jpeg",
+        });
+
+        const res = await fetch(`${BASE_URL}/perfil/foto/`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
+            },
+            body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || "Error al subir imagen");
+        }
+
+        return data;
+    },
+};
