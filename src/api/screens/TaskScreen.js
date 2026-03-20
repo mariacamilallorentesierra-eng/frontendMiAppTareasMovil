@@ -1,15 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { 
-    View, 
-    Text, 
-    FlatList, 
-    StyleSheet, 
-    TouchableOpacity, 
-    Alert, 
-    ActivityIndicator,
-    Modal,
-    TextInput 
-} from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } 
+from 'react-native';
 
 // RUTAS CORREGIDAS SEGÚN TU EXPLORADOR DE ARCHIVOS
 import { AuthContext } from '../../../context/authContext'; 
