@@ -1,6 +1,15 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } 
-from 'react-native';
+import { 
+    View, 
+    Text, 
+    FlatList, 
+    StyleSheet, 
+    TouchableOpacity, 
+    Alert, 
+    ActivityIndicator,
+    Modal,
+    TextInput 
+} from 'react-native';
 
 // RUTAS CORREGIDAS SEGÚN TU EXPLORADOR DE ARCHIVOS
 import { AuthContext } from '../../../context/authContext'; 
@@ -32,7 +41,7 @@ const TaskScreen = () => {
                 setTasks(data);
             }
         } catch (error) { 
-            console.error("Error al obtener tareas:", error); 
+            console.error("Error al cargar tareas:", error); 
         } finally { 
             setLoading(false); 
         }
@@ -62,9 +71,9 @@ const TaskScreen = () => {
 
             setTasks(prev => [nuevaTareaLocal, ...prev]);
             cerrarModal();
-            Alert.alert("Éxito", "Tarea creada exitosamente");
+            Alert.alert("Éxito", "Tarea creada correctamente");
         } catch (error) {
-            Alert.alert("Error", "No se pudo guardar la tarea");
+            Alert.alert("Error", "No se pudo guardar la tarea en el servidor");
         } finally {
             setCreando(false);
         }
