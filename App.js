@@ -1,7 +1,12 @@
 import React, { useContext } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } 
-from 'react-native';
+import { 
+  StyleSheet, 
+  View, 
+  ActivityIndicator, 
+  TouchableOpacity, 
+  Text 
+} from 'react-native';
 
 import { AuthProvider, AuthContext } from './context/authContext';
 import LoginScreen from './src/api/screens/LoginScreen';
