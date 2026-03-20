@@ -1,140 +1,243 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { 
-  View, 
-  Text, 
-  FlatList, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
-  TextInput 
+    View, 
+    Text, 
+    FlatList, 
+    StyleSheet, 
+    TouchableOpacity, 
+    Alert, 
+    ActivityIndicator,
+    Modal,
+    TextInput 
 } from 'react-native';
-import { AuthContext } from '../../context/authContext';
-import { taskApiService } from '../apiService'; // Importación del objeto
+
+// RUTAS CORREGIDAS SEGÚN TU EXPLORADOR DE ARCHIVOS
+import { AuthContext } from '../../../context/authContext'; 
+import { taskApiService } from '../apiService'; 
 
 const TaskScreen = () => {
     const { userToken } = useContext(AuthContext);
     const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (userToken) {
-            fetchTasks();
-        }  
+    // Estados para el Modal de Crear Tarea
+    const [modalVisible, setModalVisible] = useState(false);
+    const [nuevoTitulo, setNuevoTitulo] = useState('');
+    const [nuevaDescripcion, setNuevaDescripcion] = useState('');
+    const [creando, setCreando] = useState(false);
+
+    useEffect(() => { 
+        if (userToken) fetchTasks(); 
     }, [userToken]);
 
     const fetchTasks = async () => {
+        setLoading(true);
         try {
             const data = await taskApiService.getAll(userToken);
+            // Ajuste según la respuesta de tu API Django
             if (data && data.datos) {
-                setTasks(data.datos); 
+                setTasks(data.datos);
+            } else if (Array.isArray(data)) {
+                setTasks(data);
             }
-        } catch (error) {
-            console.error("Error fetching tasks:", error);
+        } catch (error) { 
+            console.error("Error al cargar tareas:", error); 
+        } finally { 
+            setLoading(false); 
         }
     };
 
-    // --- FUNCIÓN PARA ELIMINAR ---
-    const handleDelete = (id) => {
-        Alert.alert(
-            "Eliminar Tarea",
-            "¿Estás seguro de que quieres borrar esta tarea?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Eliminar", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        try {
-                            await taskApiService.delete(userToken, id);
-                            // Actualizamos la lista localmente para no tener que recargar todo
-                            setTasks(tasks.filter(t => t.id !== id));
-                        } catch (error) {
-                            Alert.alert("Error", "No se pudo eliminar la tarea");
-                        }
-                    } 
-                }
-            ]
-        );
+    const handleCrearTarea = async () => {
+        if (!nuevoTitulo.trim() || !nuevaDescripcion.trim()) {
+            Alert.alert("Aviso", "Por favor, completa el título y la descripción.");
+            return;
+        }
+
+        setCreando(true);
+        try {
+            const payload = { 
+                titulo: nuevoTitulo.trim(), 
+                descripcion: nuevaDescripcion.trim() 
+            };
+            
+            const res = await taskApiService.create(userToken, payload);
+            
+            // Creamos el objeto para la lista visual inmediatamente
+            const nuevaTareaLocal = {
+                id: res?.id || Math.random().toString(),
+                titulo: nuevoTitulo.trim(),
+                descripcion: nuevaDescripcion.trim()
+            };
+
+            setTasks(prev => [nuevaTareaLocal, ...prev]);
+            cerrarModal();
+            Alert.alert("Éxito", "Tarea creada correctamente");
+        } catch (error) {
+            Alert.alert("Error", "No se pudo guardar la tarea en el servidor");
+        } finally {
+            setCreando(false);
+        }
     };
 
-    // --- FUNCIÓN PARA MODIFICAR TÍTULO ---
-    const handleEditTitle = (task) => {
-        let newTitle = task.titulo;
+    const cerrarModal = () => {
+        setModalVisible(false);
+        setNuevoTitulo('');
+        setNuevaDescripcion('');
+    };
+
+    const eliminarTarea = (id) => {
+        Alert.alert("Eliminar", "¿Estás seguro de borrar esta tarea?", [
+            { text: "Cancelar", style: "cancel" },
+            { 
+                text: "Eliminar", 
+                style: "destructive", 
+                onPress: async () => {
+                    try {
+                        await taskApiService.delete(userToken, id);
+                        setTasks(prev => prev.filter(t => t.id !== id));
+                    } catch (e) {
+                        Alert.alert("Error", "No se pudo eliminar de la base de datos");
+                    }
+                } 
+            }
+        ]);
+    };
+
+    const editarTarea = (item) => {
         Alert.prompt(
-            "Editar Título",
-            "Introduce el nuevo nombre para la tarea:",
+            "Editar Tarea",
+            "Nuevo título:",
             [
                 { text: "Cancelar", style: "cancel" },
                 {
                     text: "Guardar",
-                    onPress: async (text) => {
+                    onPress: async (nuevoTxt) => {
+                        if (!nuevoTxt || nuevoTxt.trim() === "") return;
                         try {
-                            const updatedData = { ...task, titulo: text };
-                            await taskApiService.update(userToken, task.id, updatedData);
-                            // Actualizamos el estado local
-                            setTasks(tasks.map(t => t.id === task.id ? { ...t, titulo: text } : t));
-                        } catch (error) {
+                            await taskApiService.update(userToken, item.id, { 
+                                titulo: nuevoTxt, 
+                                descripcion: item.descripcion 
+                            });
+                            setTasks(prev => prev.map(t => t.id === item.id ? { ...t, titulo: nuevoTxt } : t));
+                        } catch (e) {
                             Alert.alert("Error", "No se pudo actualizar");
                         }
                     }
                 }
             ],
             "plain-text",
-            task.titulo
+            item.titulo
         );
     };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Tus Tareas</Text>
-            <FlatList
-                data={tasks}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                    <View style={styles.taskItem}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.taskTitle}>{item.titulo}</Text>
-                            <Text style={styles.taskDescription}>{item.descripcion}</Text>
-                        </View>
-                        
-                        <View style={styles.actions}>
-                            <TouchableOpacity 
-                                onPress={() => handleEditTitle(item)}
-                                style={styles.editButton}
-                            >
-                                <Text style={{ color: 'blue' }}>Editar</Text>
-                            </TouchableOpacity>
+    const renderTarea = ({ item }) => (
+        <View style={styles.card}>
+            <View style={styles.textSide}>
+                <Text style={styles.itemTitle}>{item.titulo}</Text>
+                <Text style={styles.itemDesc}>{item.descripcion}</Text>
+            </View>
+            <View style={styles.buttonSide}>
+                <TouchableOpacity onPress={() => editarTarea(item)} style={styles.actionBtn}>
+                    <Text style={styles.iconText}>✏️</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => eliminarTarea(item.id)} style={styles.actionBtn}>
+                    <Text style={styles.iconText}>🗑️</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 
-                            <TouchableOpacity 
-                                onPress={() => handleDelete(item.id)}
-                                style={styles.deleteButton}
-                            >
-                                <Text style={{ color: 'red' }}>Borrar</Text>
+    return (
+        <View style={styles.mainContainer}>
+            <Text style={styles.mainHeader}>Mis Tareas</Text>
+            
+            {loading ? (
+                <ActivityIndicator size="large" color="#007bff" />
+            ) : (
+                <FlatList
+                    data={tasks}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderTarea}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    ListEmptyComponent={<Text style={styles.emptyText}>No hay tareas pendientes.</Text>}
+                />
+            )}
+
+            {/* BOTÓN FLOTANTE (FAB) */}
+            <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+                <Text style={styles.fabText}>+</Text>
+            </TouchableOpacity>
+
+            {/* MODAL PARA CREAR TAREA */}
+            <Modal visible={modalVisible} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <Text style={styles.modalTitle}>Nueva Tarea</Text>
+                        
+                        <TextInput 
+                            style={styles.input} 
+                            placeholder="Título de la tarea" 
+                            value={nuevoTitulo} 
+                            onChangeText={setNuevoTitulo} 
+                        />
+                        <TextInput 
+                            style={[styles.input, { height: 80 }]} 
+                            placeholder="Descripción" 
+                            value={nuevaDescripcion} 
+                            onChangeText={setNuevaDescripcion} 
+                            multiline 
+                        />
+
+                        <View style={styles.modalBtns}>
+                            <TouchableOpacity onPress={cerrarModal}>
+                                <Text style={styles.cancelTxt}>Cancelar</Text>
                             </TouchableOpacity>
+                            {creando ? (
+                                <ActivityIndicator color="#007bff" />
+                            ) : (
+                                <TouchableOpacity style={styles.createBtn} onPress={handleCrearTarea}>
+                                    <Text style={styles.createBtnText}>Crear</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
-                )}
-            />
+                </View>
+            </Modal>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5' },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, marginTop: 40 },
-    taskItem: { 
-        backgroundColor: '#fff', 
-        padding: 15, 
-        borderRadius: 10, 
-        marginBottom: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        elevation: 2 
+    mainContainer: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 15 },
+    mainHeader: { fontSize: 26, fontWeight: 'bold', marginTop: 50, marginBottom: 20, color: '#333' },
+    card: {
+        flexDirection: 'row', backgroundColor: '#f9f9f9', padding: 15,
+        marginBottom: 12, borderRadius: 12, alignItems: 'center',
+        justifyContent: 'space-between', borderWidth: 1, borderColor: '#eee',
+        elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3,
     },
-    taskTitle: { fontSize: 16, fontWeight: 'bold' },
-    taskDescription: { fontSize: 14, color: '#666' },
-    actions: { flexDirection: 'column', gap: 10, marginLeft: 10 },
-    editButton: { padding: 5 },
-    deleteButton: { padding: 5 }
+    textSide: { flex: 1, paddingRight: 10 },
+    itemTitle: { fontSize: 17, fontWeight: 'bold', color: '#222' },
+    itemDesc: { fontSize: 14, color: '#666', marginTop: 4 },
+    buttonSide: { flexDirection: 'row', alignItems: 'center' },
+    actionBtn: { marginLeft: 12, padding: 5 },
+    iconText: { fontSize: 22 },
+    fab: {
+        position: 'absolute', right: 25, bottom: 25,
+        backgroundColor: '#007bff', width: 60, height: 60,
+        borderRadius: 30, justifyContent: 'center', alignItems: 'center', 
+        elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5
+    },
+    fabText: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalBox: { width: '85%', backgroundColor: '#fff', padding: 25, borderRadius: 15, elevation: 10 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
+    input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 12, marginBottom: 15, fontSize: 16 },
+    modalBtns: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+    cancelTxt: { color: 'red', fontWeight: 'bold', fontSize: 16 },
+    createBtn: { backgroundColor: '#007bff', paddingHorizontal: 25, paddingVertical: 12, borderRadius: 10 },
+    createBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    emptyText: { textAlign: 'center', marginTop: 50, color: '#aaa', fontSize: 16 }
 });
 
 export default TaskScreen;
