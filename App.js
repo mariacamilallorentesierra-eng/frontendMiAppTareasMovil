@@ -10,16 +10,15 @@ import {
   SafeAreaView 
 } from 'react-native';
 
-
 import LoginScreen from './src/api/screens/LoginScreen';
 import { AuthProvider, AuthContext } from './context/authContext';
-import { getTasks } from './src/api/apiService';
+// 1. IMPORTANTE: Importamos el objeto exacto de tu archivo
+import { taskApiService } from './src/api/apiService'; 
 
 const NavigationWrapper = () => {
   const { userToken, isLoading, logout } = useContext(AuthContext);
   const [tasks, setTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
-
 
   useEffect(() => {
     if (userToken) {
@@ -30,8 +29,10 @@ const NavigationWrapper = () => {
   const fetchUserTasks = async () => {
     setLoadingTasks(true);
     try {
-      const response = await getTasks(userToken);
+      // 2. CORRECCIÓN: Usamos el método .getAll() de tu objeto
+      const response = await taskApiService.getAll(userToken);
       
+      // Como tu Django devuelve { "datos": [...] }, accedemos así:
       if (response && response.datos) {
         setTasks(response.datos);
       } else {
@@ -39,7 +40,6 @@ const NavigationWrapper = () => {
       }
     } catch (error) {
       console.error("Error al obtener tareas:", error);
-      setTasks([]);
     } finally {
       setLoadingTasks(false);
     }
@@ -49,7 +49,6 @@ const NavigationWrapper = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#00ff4c" />
-        <Text>Iniciando...</Text>
       </View>
     );
   }
@@ -63,7 +62,7 @@ const NavigationWrapper = () => {
         </View>
 
         {loadingTasks ? (
-          <ActivityIndicator size="small" color="#00ff4c" style={{ marginTop: 20 }} />
+          <ActivityIndicator size="small" color="#00ff4c" />
         ) : (
           <FlatList
             data={tasks}
@@ -71,19 +70,12 @@ const NavigationWrapper = () => {
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
               <View style={styles.taskCard}>
-             
-                <Text style={styles.taskTitle}>{item.titulo || "Sin título"}</Text>
-                
-                <Text style={styles.taskDescription}>
-                  {item.descripcion || "Sin descripción"}
-                </Text>
+                <Text style={styles.taskTitle}>{item.titulo}</Text>
+                <Text style={styles.taskDescription}>{item.descripcion}</Text>
               </View>
             )}
             ListEmptyComponent={
-              <View style={styles.center}>
-                <Text style={styles.emptyText}>No hay tareas para mostrar.</Text>
-                <Button title="Actualizar" onPress={fetchUserTasks} />
-              </View>
+              <Text style={styles.emptyText}>No hay tareas.</Text>
             }
           />
         )}
@@ -91,11 +83,7 @@ const NavigationWrapper = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <LoginScreen />
-    </View>
-  );
+  return <LoginScreen />;
 };
 
 export default function App() {
@@ -107,60 +95,27 @@ export default function App() {
   );
 }
 
+// Estilos rápidos y limpios
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    padding: 20, 
+    backgroundColor: '#fff', 
+    marginTop: 40 
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    marginTop: 40
-  },
-  welcomeText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  listContent: {
-    padding: 15,
-  },
-  taskCard: {
-    backgroundColor: '#fff',
-    padding: 18,
-    borderRadius: 10,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  taskTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 5,
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  emptyText: {
-    color: '#999',
+  welcomeText: { fontSize: 20, fontWeight: 'bold' },
+  listContent: { padding: 20 },
+  taskCard: { 
+    backgroundColor: '#fff', 
+    padding: 15, 
+    borderRadius: 10, 
     marginBottom: 10,
-    fontSize: 15
-  }
+    elevation: 2 
+  },
+  taskTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
+  taskDescription: { fontSize: 14, color: '#666' },
+  emptyText: { textAlign: 'center', marginTop: 20, color: '#999' }
 });
