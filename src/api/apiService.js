@@ -1,9 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// Tip: Asegúrate de que esta IP sea la de tu máquina actual (ipconfig en consola)
-const BASE_URL = "http://192.168.1.9:8000/api";
-
-// --- SERVICIO DE AUTENTICACIÓN ---
+const BASE_URL = "http://192.168.20.28:8000/api";
 export const loginService = async (email, password) => {
     try {
         const response = await fetch(`${BASE_URL}/auth/login/`, {
@@ -20,17 +16,16 @@ export const loginService = async (email, password) => {
             throw new Error(data.error || "Error al iniciar sesión");
         }
 
-        return data; // Retorna tokens de Firebase/Django
+        return data; 
     } catch (error) {
         console.error("Error en loginService:", error);
         throw error;
     }
 };
 
-// --- SERVICIO DE TAREAS (CRUD) ---
+
 export const taskApiService = {
     
-    // 1. Listar tareas (GET)
     getAll: async (token) => {
         try {
             const response = await fetch(`${BASE_URL}/tareas/`, {
@@ -46,8 +41,6 @@ export const taskApiService = {
             throw error;
         }
     },
-
-    // 2. Crear tarea (POST)
     create: async (token, data) => {
         try {
             const response = await fetch(`${BASE_URL}/tareas/`, {
@@ -64,9 +57,6 @@ export const taskApiService = {
             throw error;
         }
     },
-
-    // 3. Actualizar tarea (PUT)
-    // CRÍTICO: Se añade la barra "/" al final de la URL para que Django no falle
     update: async (token, id, data) => {
         try {
             const response = await fetch(`${BASE_URL}/tareas/${id}/`, {
@@ -86,9 +76,6 @@ export const taskApiService = {
             throw error;
         }
     },
-
-    // 4. Eliminar tarea (DELETE)
-    // CRÍTICO: Se añade la barra "/" al final y manejamos la respuesta de tu views.py
     delete: async (token, id) => {
         try {
             const response = await fetch(`${BASE_URL}/tareas/${id}/`, {
@@ -102,7 +89,6 @@ export const taskApiService = {
             const result = await response.json();
             
             if (!response.ok) {
-                // Esto capturará el "No tienes permiso" de tu views.py
                 throw new Error(result.Error || "No se pudo eliminar");
             }
 
