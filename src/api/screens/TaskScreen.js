@@ -11,7 +11,6 @@ import {
     TextInput 
 } from 'react-native';
 
-// RUTAS CORREGIDAS SEGÚN TU EXPLORADOR DE ARCHIVOS
 import { AuthContext } from '../../../context/authContext'; 
 import { taskApiService } from '../apiService'; 
 
@@ -19,12 +18,11 @@ const TaskScreen = () => {
     const { userToken } = useContext(AuthContext);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(false);
-
-    // Estados para el Modal de Crear Tarea
     const [modalVisible, setModalVisible] = useState(false);
-    const [nuevoTitulo, setNuevoTitulo] = useState('');
-    const [nuevaDescripcion, setNuevaDescripcion] = useState('');
-    const [creando, setCreando] = useState(false);
+    const [titulo, setTitulo] = useState('');
+    const [descripcion, setDescripcion] = useState('');
+    const [taskEditingId, setTaskEditingId] = useState(null); 
+    const [procesando, setProcesando] = useState(false);
 
     useEffect(() => { 
         if (userToken) fetchTasks(); 
@@ -34,7 +32,6 @@ const TaskScreen = () => {
         setLoading(true);
         try {
             const data = await taskApiService.getAll(userToken);
-            // Ajuste según la respuesta de tu API Django
             if (data && data.datos) {
                 setTasks(data.datos);
             } else if (Array.isArray(data)) {
@@ -46,43 +43,52 @@ const TaskScreen = () => {
             setLoading(false); 
         }
     };
-
-    const handleCrearTarea = async () => {
-        if (!nuevoTitulo.trim() || !nuevaDescripcion.trim()) {
+    const handleGuardarTarea = async () => {
+        if (!titulo.trim() || !descripcion.trim()) {
             Alert.alert("Aviso", "Por favor, completa el título y la descripción.");
             return;
         }
 
-        setCreando(true);
+        setProcesando(true);
         try {
             const payload = { 
-                titulo: nuevoTitulo.trim(), 
-                descripcion: nuevaDescripcion.trim() 
+                titulo: titulo.trim(), 
+                descripcion: descripcion.trim() 
             };
             
-            const res = await taskApiService.create(userToken, payload);
-            
-            // Creamos el objeto para la lista visual inmediatamente
-            const nuevaTareaLocal = {
-                id: res?.id || Math.random().toString(),
-                titulo: nuevoTitulo.trim(),
-                descripcion: nuevaDescripcion.trim()
-            };
-
-            setTasks(prev => [nuevaTareaLocal, ...prev]);
+            if (taskEditingId) {
+                await taskApiService.update(userToken, taskEditingId, payload);
+                setTasks(prev => prev.map(t => t.id === taskEditingId ? { ...t, ...payload } : t));
+                Alert.alert("Éxito", "Tarea actualizada correctamente");
+            } else {
+                const res = await taskApiService.create(userToken, payload);
+                const nuevaTareaLocal = {
+                    id: res?.id || Math.random().toString(),
+                    ...payload
+                };
+                setTasks(prev => [nuevaTareaLocal, ...prev]);
+                Alert.alert("Éxito", "Tarea creada correctamente");
+            }
             cerrarModal();
-            Alert.alert("Éxito", "Tarea creada correctamente");
         } catch (error) {
-            Alert.alert("Error", "No se pudo guardar la tarea en el servidor");
+            Alert.alert("Error", "No se pudo sincronizar con el servidor");
         } finally {
-            setCreando(false);
+            setProcesando(false);
         }
+    };
+
+    const abrirEditar = (item) => {
+        setTaskEditingId(item.id);
+        setTitulo(item.titulo);
+        setDescripcion(item.descripcion);
+        setModalVisible(true);
     };
 
     const cerrarModal = () => {
         setModalVisible(false);
-        setNuevoTitulo('');
-        setNuevaDescripcion('');
+        setTitulo('');
+        setDescripcion('');
+        setTaskEditingId(null);
     };
 
     const eliminarTarea = (id) => {
@@ -96,38 +102,11 @@ const TaskScreen = () => {
                         await taskApiService.delete(userToken, id);
                         setTasks(prev => prev.filter(t => t.id !== id));
                     } catch (e) {
-                        Alert.alert("Error", "No se pudo eliminar de la base de datos");
+                        Alert.alert("Error", "No se pudo eliminar");
                     }
                 } 
             }
         ]);
-    };
-
-    const editarTarea = (item) => {
-        Alert.prompt(
-            "Editar Tarea",
-            "Nuevo título:",
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Guardar",
-                    onPress: async (nuevoTxt) => {
-                        if (!nuevoTxt || nuevoTxt.trim() === "") return;
-                        try {
-                            await taskApiService.update(userToken, item.id, { 
-                                titulo: nuevoTxt, 
-                                descripcion: item.descripcion 
-                            });
-                            setTasks(prev => prev.map(t => t.id === item.id ? { ...t, titulo: nuevoTxt } : t));
-                        } catch (e) {
-                            Alert.alert("Error", "No se pudo actualizar");
-                        }
-                    }
-                }
-            ],
-            "plain-text",
-            item.titulo
-        );
     };
 
     const renderTarea = ({ item }) => (
@@ -137,7 +116,7 @@ const TaskScreen = () => {
                 <Text style={styles.itemDesc}>{item.descripcion}</Text>
             </View>
             <View style={styles.buttonSide}>
-                <TouchableOpacity onPress={() => editarTarea(item)} style={styles.actionBtn}>
+                <TouchableOpacity onPress={() => abrirEditar(item)} style={styles.actionBtn}>
                     <Text style={styles.iconText}>✏️</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => eliminarTarea(item.id)} style={styles.actionBtn}>
@@ -163,28 +142,28 @@ const TaskScreen = () => {
                 />
             )}
 
-            {/* BOTÓN FLOTANTE (FAB) */}
             <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
                 <Text style={styles.fabText}>+</Text>
             </TouchableOpacity>
 
-            {/* MODAL PARA CREAR TAREA */}
             <Modal visible={modalVisible} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Nueva Tarea</Text>
+                        <Text style={styles.modalTitle}>
+                            {taskEditingId ? "Editar Tarea" : "Nueva Tarea"}
+                        </Text>
                         
                         <TextInput 
                             style={styles.input} 
-                            placeholder="Título de la tarea" 
-                            value={nuevoTitulo} 
-                            onChangeText={setNuevoTitulo} 
+                            placeholder="Título" 
+                            value={titulo} 
+                            onChangeText={setTitulo} 
                         />
                         <TextInput 
                             style={[styles.input, { height: 80 }]} 
                             placeholder="Descripción" 
-                            value={nuevaDescripcion} 
-                            onChangeText={setNuevaDescripcion} 
+                            value={descripcion} 
+                            onChangeText={setDescripcion} 
                             multiline 
                         />
 
@@ -192,11 +171,13 @@ const TaskScreen = () => {
                             <TouchableOpacity onPress={cerrarModal}>
                                 <Text style={styles.cancelTxt}>Cancelar</Text>
                             </TouchableOpacity>
-                            {creando ? (
+                            {procesando ? (
                                 <ActivityIndicator color="#007bff" />
                             ) : (
-                                <TouchableOpacity style={styles.createBtn} onPress={handleCrearTarea}>
-                                    <Text style={styles.createBtnText}>Crear</Text>
+                                <TouchableOpacity style={styles.createBtn} onPress={handleGuardarTarea}>
+                                    <Text style={styles.createBtnText}>
+                                        {taskEditingId ? "Guardar" : "Crear"}
+                                    </Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -206,7 +187,6 @@ const TaskScreen = () => {
         </View>
     );
 };
-
 const styles = StyleSheet.create({
     mainContainer: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 15 },
     mainHeader: { fontSize: 26, fontWeight: 'bold', marginTop: 50, marginBottom: 20, color: '#333' },

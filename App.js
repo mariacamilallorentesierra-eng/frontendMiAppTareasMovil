@@ -1,45 +1,77 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { 
-  StyleSheet, 
-  View, 
-  ActivityIndicator, 
-  TouchableOpacity, 
-  Text 
-} from 'react-native';
+import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
 import { AuthProvider, AuthContext } from './context/authContext';
 import LoginScreen from './src/api/screens/LoginScreen';
-import TaskScreen from './src/api/screens/TaskScreen'; // Importamos tu pantalla de tareas
+import TaskScreen from './src/api/screens/TaskScreen';
+import HomeScreen from './src/api/screens/HomeScreen';
+import PhotoScreen from './src/api/screens/dashboard'; 
 
 const NavigationWrapper = () => {
-  const { userToken, isLoading, logout } = useContext(AuthContext);
+  const { userToken, isLoading } = useContext(AuthContext);
+  const [currentView, setCurrentView] = useState('home');
+  const [profileImageURI, setProfileImageURI] = useState(null);
 
-  // Pantalla de carga inicial
+  useEffect(() => {
+    const loadPersistedImage = async () => {
+      try {
+        const savedImage = await AsyncStorage.getItem('@user_profile_image');
+        if (savedImage !== null) {
+          setProfileImageURI(savedImage);
+        }
+      } catch (e) {
+        console.error("Error al cargar la imagen guardada:", e);
+      }
+    };
+    loadPersistedImage();
+  }, []);
+
+  const handleUpdateImage = async (uri) => {
+    try {
+      setProfileImageURI(uri);
+      await AsyncStorage.setItem('@user_profile_image', uri); 
+    } catch (e) {
+      console.error("Error al guardar la imagen:", e);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="#39A900" />
       </View>
     );
   }
 
-  // Si hay token, mostramos las tareas. Si no, el login.
+  if (!userToken) {
+    return <LoginScreen />;
+  }
+
   return (
     <View style={styles.container}>
-      {userToken ? (
-        <>
-          {/* Botón de Salir global (opcional, si quieres que aparezca arriba) */}
-          <View style={styles.topBar}>
-            <TouchableOpacity onPress={logout}>
-              <Text style={styles.logoutText}>Cerrar Sesión</Text>
-            </TouchableOpacity>
-          </View>
-          
+      <StatusBar style="light" />
+      
+      {currentView === 'home' && (
+        <HomeScreen onNavigate={setCurrentView} currentImageURI={profileImageURI} />
+      )}
+
+      {currentView === 'tasks' && (
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity onPress={() => setCurrentView('home')} style={styles.backBtn}>
+            <Text style={styles.backText}>← Volver al Inicio</Text>
+          </TouchableOpacity>
           <TaskScreen />
-        </>
-      ) : (
-        <LoginScreen />
+        </View>
+      )}
+
+      {currentView === 'photo' && (
+        <PhotoScreen 
+            onNavigate={setCurrentView} 
+            currentImageURI={profileImageURI} 
+            onImageUpdate={handleUpdateImage} 
+        />
       )}
     </View>
   );
@@ -49,29 +81,13 @@ export default function App() {
   return (
     <AuthProvider>
       <NavigationWrapper />
-      <StatusBar style="auto" />
     </AuthProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topBar: {
-    marginTop: 50, // Margen para evitar la muesca (notch)
-    paddingHorizontal: 20,
-    alignItems: 'flex-end', // Alinea el botón a la derecha
-  },
-  logoutText: {
-    color: '#ff4d4d',
-    fontWeight: 'bold',
-    fontSize: 14,
-  }
+  container: { flex: 1, backgroundColor: '#fff' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { marginTop: 50, marginLeft: 20, marginBottom: 10, padding: 5, zIndex: 10 },
+  backText: { color: '#39A900', fontWeight: 'bold', fontSize: 16 }
 });
